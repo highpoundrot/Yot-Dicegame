@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ヨット - ダイスゲーム v0.9.1 (修正済み)</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .dice-container { display: flex; justify-content: center; margin: 20px; }
+        .dice { width: 50px; height: 50px; margin: 5px; cursor: pointer; }
+        .held { border: 3px solid red; border-radius: 10px; }
+        button { font-size: 18px; margin: 10px; padding: 10px 20px; }
+        .scoreboard { margin-top: 20px; }
+        .scored { color: gray; }
+        table { width: 50%; margin: auto; border-collapse: collapse; }
+        th, td { border: 1px solid black; padding: 10px; text-align: center; }
+        #final-score-screen { display: none; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>ヨット - ダイスゲーム v0.9.1 (修正済み)</h1>
+    <h2>ラウンド: <span id="round-count">1</span> / 12</h2>
+    <div class="dice-container" id="dice-container"></div>
+    <button id="roll-button">サイコロを振る</button>
+    <button id="reset-button">リセット</button>
+    
+    <div class="scoreboard">
+        <h2>スコアボード</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>役</th>
+                    <th>スコア</th>
+                    <th>確定</th>
+                </tr>
+            </thead>
+            <tbody id="score-list"></tbody>
+        </table>
+        <h3>合計スコア: <span id="total-score">0</span> 点</h3>
+    </div>
+
+    <div id="final-score-screen">
+        <h2>ゲーム終了！</h2>
+        <h3>最終スコア: <span id="final-score">0</span> 点</h3>
+        <h3>最高スコア: <span id="high-score">0</span> 点</h3>
+        <h3>平均スコア: <span id="average-score">0</span> 点</h3>
+        <button id="restart-button">再スタート</button>
+    </div>
+
+    <script>
+        const diceContainer = document.getElementById("dice-container");
+        const rollButton = document.getElementById("roll-button");
+        const resetButton = document.getElementById("reset-button");
+        const scoreList = document.getElementById("score-list");
+        const totalScoreDisplay = document.getElementById("total-score");
+        const roundCountDisplay = document.getElementById("round-count");
+        const finalScoreScreen = document.getElementById("final-score-screen");
+        const finalScoreDisplay = document.getElementById("final-score");
+        const highScoreDisplay = document.getElementById("high-score");
+        const averageScoreDisplay = document.getElementById("average-score");
+        const restartButton = document.getElementById("restart-button");
+
+        let dice = [1, 1, 1, 1, 1];
+        let held = [false, false, false, false, false];
+        let rollsLeft = 3;
+        let totalScore = 0;
+        let roundCount = 1;
+        let scoredCategories = {}; 
+
+        function rollDice() {
+            if (rollsLeft > 0) {
+                for (let i = 0; i < 5; i++) {
+                    if (!held[i]) {
+                        dice[i] = Math.floor(Math.random() * 6) + 1;
+                    }
+                }
+                rollsLeft--;
+                updateDiceDisplay();
+            }
+        }
+
+        function calculateScore() {
+            const sortedDice = [...dice].sort();
+            const isStraight = (sortedDice.join() === "1,2,3,4,5" || sortedDice.join() === "2,3,4,5,6");
+
+            const scoreData = [
+                { name: "ヨット", key: "yacht", points: sortedDice.every(v => v === sortedDice[0]) ? 50 : 0 },
+                { name: "ストレート", key: "straight", points: isStraight ? 30 : 0 },
+                { name: "チャンス", key: "chance", points: dice.reduce((a, b) => a + b, 0) }
+            ];
+
+            scoreList.innerHTML = "";
+            scoreData.forEach(entry => {
+                const row = document.createElement("tr");
+                row.innerHTML = `<td>${entry.name}</td><td>${entry.points}</td>`;
+
+                if (scoredCategories[entry.key] !== undefined) {
+                    row.innerHTML += `<td class="scored">確定済み</td>`;
+                } else {
+                    const button = document.createElement("button");
+                    button.textContent = "確定";
+                    button.onclick = () => confirmScore(entry.key, entry.points);
+                    row.appendChild(button);
+                }
+
+                scoreList.appendChild(row);
+            });
+        }
+
+        function confirmScore(category, points) {
+            scoredCategories[category] = points;
+            totalScore += points;
+            totalScoreDisplay.textContent = totalScore;
+            roundCount++;
+
+            if (roundCount > 12) {
+                endGame();
+            } else {
+                roundCountDisplay.textContent = roundCount;
+                resetGame();
+            }
+        }
+
+        function endGame() {
+            finalScoreDisplay.textContent = totalScore;
+            let highScore = localStorage.getItem("highScore") || 0;
+            let gamesPlayed = localStorage.getItem("gamesPlayed") || 0;
+            let totalPoints = localStorage.getItem("totalPoints") || 0;
+
+            highScore = Math.max(highScore, totalScore);
+            gamesPlayed++;
+            totalPoints = Number(totalPoints) + totalScore;
+
+            localStorage.setItem("highScore", highScore);
+            localStorage.setItem("gamesPlayed", gamesPlayed);
+            localStorage.setItem("totalPoints", totalPoints);
+
+            highScoreDisplay.textContent = highScore;
+            averageScoreDisplay.textContent = (totalPoints / gamesPlayed).toFixed(1);
+            finalScoreScreen.style.display = "block";
+        }
+    </script>
+</body>
+</html>
